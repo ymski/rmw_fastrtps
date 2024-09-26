@@ -98,7 +98,8 @@ __rmw_publish_serialized_message(
   eprosima::fastcdr::FastBuffer buffer(
     reinterpret_cast<char *>(serialized_message->buffer), serialized_message->buffer_length);
   eprosima::fastcdr::Cdr ser(
-    buffer, eprosima::fastcdr::Cdr::DEFAULT_ENDIAN, eprosima::fastcdr::Cdr::DDS_CDR);
+    buffer, eprosima::fastcdr::Cdr::DEFAULT_ENDIAN, eprosima::fastcdr::CdrVersion::XCDRv1);
+  ser.set_encoding_flag(eprosima::fastcdr::EncodingAlgorithmFlag::PLAIN_CDR);
   if (!ser.jump(serialized_message->buffer_length)) {
     RMW_SET_ERROR_MSG("cannot correctly set serialized buffer");
     return RMW_RET_ERROR;
@@ -108,7 +109,10 @@ __rmw_publish_serialized_message(
   data.type = FASTRTPS_SERIALIZED_DATA_TYPE_CDR_BUFFER;
   data.data = &ser;
   data.impl = nullptr;  // not used when type is FASTRTPS_SERIALIZED_DATA_TYPE_CDR_BUFFER
-  if (!info->data_writer_->write(&data)) {
+  eprosima::fastrtps::Time_t stamp;
+  eprosima::fastrtps::Time_t::now(stamp);
+  TRACETOOLS_TRACEPOINT(rmw_publish, publisher, serialized_message, stamp.to_ns());
+  if (!info->data_writer_->write_w_timestamp(&data, eprosima::fastdds::dds::HANDLE_NIL, stamp)) {
     RMW_SET_ERROR_MSG("cannot publish data");
     return RMW_RET_ERROR;
   }
